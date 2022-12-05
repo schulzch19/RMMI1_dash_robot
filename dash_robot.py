@@ -100,7 +100,7 @@ app.layout = html.Div([
 
     ]),
     html.H2("DH parameters"),
-    robot_table:= html.Table([], id='joints_table'),
+    html.Table([], id='joints_table'),
     html.Br(),
     html.Div([
         "TCP: ",
