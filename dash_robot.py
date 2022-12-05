@@ -12,7 +12,6 @@ np.set_printoptions(precision=3, suppress=True)
 # app = Dash(__name__, external_stylesheets=external_stylesheets)
 # app = Dash(__name__)
 app = DashProxy(prevent_initial_callbacks=False, transforms=[MultiplexerTransform()], external_stylesheets=external_stylesheets)
-server = app.server
 
 robot = None
 
@@ -180,14 +179,17 @@ def update_robot(params, angles, h, w_link, w_joint, w_arrow, l_arrow, c_arrow):
     print("update robot")
     global robot
     triggered_id = ctx.triggered_id
-    if triggered_id['type'] == "dyn-in":
-        dh_params = []
-        for l in range(0, int(len(params)/4)):
-            axis = [float(n) for n in params[4*l:4*l+4]]
-            dh_params.append([axis[0], axis[1], axis[2]/180*pi, axis[3]/180*pi])
-        dh_params = np.array(dh_params)
-        print(dh_params)
-        robot = RobotSerial(dh_params)
+    try:
+        if triggered_id['type'] == "dyn-in":
+            dh_params = []
+            for l in range(0, int(len(params)/4)):
+                axis = [float(n) for n in params[4*l:4*l+4]]
+                dh_params.append([axis[0], axis[1], axis[2]/180*pi, axis[3]/180*pi])
+            dh_params = np.array(dh_params)
+            print(dh_params)
+            robot = RobotSerial(dh_params)
+    except:
+        pass
     robot_angles = np.array([float(a)/180*pi for a in angles])
     f = robot.forward(robot_angles)
     
