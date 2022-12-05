@@ -4,10 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from visual_kinematics.RobotSerial import *
 from math import pi
-import pandas as pd
 import numpy as np
-import webbrowser
-from threading import Timer
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 np.set_printoptions(precision=3, suppress=True)
@@ -379,10 +376,5 @@ def update_output_div(joints, params, angles):
 #     fig = go.Figure(fig_old)
 #     return fig.update_layout(height = max(10, int(h)))
 
-def open_browser():
-    	webbrowser.open_new("http://localhost:{}".format(5080))
-
 if __name__ == '__main__':
-    # Timer(1, open_browser).start();
-    # app.run_server(debug=True, port=5080)
     app.run_server(debug=True)
