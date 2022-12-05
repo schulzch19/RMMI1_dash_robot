@@ -3,3 +3,4 @@ dash_extensions
 visual_kinematics
 numpy
 gunicorn
+pandas
