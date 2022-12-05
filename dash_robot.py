@@ -12,6 +12,7 @@ np.set_printoptions(precision=3, suppress=True)
 # app = Dash(__name__, external_stylesheets=external_stylesheets)
 # app = Dash(__name__)
 app = DashProxy(prevent_initial_callbacks=False, transforms=[MultiplexerTransform()], external_stylesheets=external_stylesheets)
+server = app.server
 
 robot = None
 
