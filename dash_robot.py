@@ -81,6 +81,7 @@ def draw_robot(robot, height, w_link, w_joint, w_arrow, l_arrow, c_arrow):
 # layout
 app.layout = html.Div([
     html.H1("Model your own robot using DH parameters"),
+    dcc.Link(html.Button('go to git repository', style={'fontSize': '1.1em'}), href="https://github.com/schulzch19/RMMI1_dash_robot", refresh = True),
     html.H2("Settings"),
     html.Div([
         " fig height: ",
