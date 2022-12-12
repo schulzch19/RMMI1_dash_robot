@@ -49,7 +49,7 @@ def drawMat(mat, lw, scale, cone):
     return xy + arrow_z
 
 # draw the robot
-def draw_robot(robot, height, w_link, w_joint, w_arrow, l_arrow, c_arrow):
+def draw_robot(robot, height, w_link, w_joint, w_arrow, l_arrow, c_arrow, l_color):
     print("draw robot")
     poses = [[0, 0, 0]]
     matrices = [np.eye(4)]
@@ -58,30 +58,54 @@ def draw_robot(robot, height, w_link, w_joint, w_arrow, l_arrow, c_arrow):
         poses.append(list(robot.axis_frames[i][:3, 3]))
         matrices.append(np.array(robot.axis_frames[i][:4, :4]))
     poses = np.array(poses)
-    print("\npositions: \n")
-    print(poses)
-    print("\nfinal matrices: \n")
-    print(matrices)
-    print("\nTransitional matrices:\n")
+    # print("\npositions: \n")
+    # print(poses)
+    # print("\nfinal matrices: \n")
+    # print(matrices)
+    # print("\nTransitional matrices:\n")
     for i in range(robot.num_axis):
         print(np.array(robot.ts[i][:4, :4]))
         transitional_matrices.append(np.array(robot.ts[i][:4, :4]))
 
     layout = go.Layout(scene=dict(aspectmode="data"), height = max(10, int(height)), margin=dict(l=0, r=0, b=0, t=0))
-    data=[go.Scatter3d(x=poses[:, 0], y=poses[:, 1], z=poses[:, 2],mode='lines+markers', line=dict(color='grey', width=int(w_link)), marker=dict(color='black', size=int(w_joint)), showlegend = False)]
+    data=[go.Scatter3d(x=poses[:, 0], y=poses[:, 1], z=poses[:, 2],mode='lines+markers', line=dict(color=l_color, width=int(w_link)), marker=dict(color='black', size=int(w_joint)), showlegend = False)]
     for mat in matrices:
         data = data + drawMat(mat, int(w_arrow), float(l_arrow), float(c_arrow))
     fig = go.Figure(data=data, layout=layout)
-    
-
-
 
     return fig, matrices, transitional_matrices
 
 # layout
 app.layout = html.Div([
     html.H1("Model your own robot using DH parameters"),
-    dcc.Link(html.Button('go to git repository', style={'fontSize': '1.1em'}), href="https://github.com/schulzch19/RMMI1_dash_robot", refresh = True),
+    html.Div([
+        "This website allows you to model a robot based on DH parameters. Alternatively, you can also download the code and locally run the python script on your computer.", html.Br(),
+        dcc.Link(html.Button('go to git repository', style={'fontSize': '1.1em'}), href="https://github.com/schulzch19/RMMI1_dash_robot", refresh = True)
+    ]),
+    html.H2("Instructions"),
+    html.Ul([
+        html.Li("Settings: Adapt the plot to your personal preferences. Play around and see what happens."),
+        html.Li([
+            "Robot modelling",
+            html.Ol([
+                html.Li("Set the number of joints, the table below will automatically change to the proper number of rows."),
+                html.Li("Set the parameters: Each row represents one joint (d, a, alpha, theta). If you are unsure about how the parameters influence the model, look at the graph.")
+                ], style={"list-style-position": "outside"})
+            ]),
+        html.Li(["Move the robot's TCP", html.Br(), "All joints are automatically set as revolute joints. The last column gives you the possibility to set the joint's angle and \
+                thereby move the robot around. Since the server is rather slow, I recommend you don't use the arrows some browsers provide, but instead immediately set the \"angle\" column to the desired value. \
+                TCP position and orientation are automatically updated und shown underneath the table."]),
+        html.Li([
+            "Inverse Kinematics: This script comes with an implementation of inverse kinematics.",
+            html.Ol([
+                html.Li("The two rows TCP & Rotation now function as an input. Set the position you wish the robot to move to in cartesian coordinates, \
+                    set the orientation using quaternions."),
+                html.Li("Click the \"CALCULATE INVERSE\" button. The angles in the table are now automatically updated. \
+                    Usually, the found solution will slightly deviate from the requested position. In this case, position & orientation will automatically be updated.")
+                ], style={"list-style-position": "outside"})
+            ]),
+        html.Li("If you are using this visualization tool to further understand kinematic models, all matrices for the current position are printed underneath the plot.")
+    ], style={"list-style-position": "outside", "margin-left": "2.5rem"}),
     html.H2("Settings"),
     html.Div([
         " fig height: ",
@@ -95,7 +119,9 @@ app.layout = html.Div([
         " arrow length: ",
         dcc.Input(id='length_arrow', value='0.5', type='number', style={'width': '5em'}), html.Br(),
         " arrow cone size: ",
-        dcc.Input(id='size_cone_arrow', value='0.1', type='number', style={'width': '5em'})
+        dcc.Input(id='size_cone_arrow', value='0.1', type='number', style={'width': '5em'}), html.Br(),
+        " link color (e.g. teal, #f25c19): ",
+        dcc.Input(id='color_link', value='teal', style={'width': '7em'})
 
     ]),
     html.H2("DH parameters"),
@@ -127,6 +153,7 @@ app.layout = html.Div([
         html.Button('Reset Angles', id='angle-reset-btn', n_clicks=0, style={'fontSize': '1.1em'}),
         html.Button('Reset DH parameters', id='dh-reset-btn', n_clicks=0, style={'fontSize': '1.1em'}),
     ]),
+    html.H2("Visualization"),
     dcc.Graph(id='graph-robot'),
     html.Div([
         html.H2("Transformation matrices"),
@@ -153,13 +180,12 @@ app.layout = html.Div([
     Input(component_id='width_joint', component_property='value'),
     Input(component_id='width_arrow', component_property='value'),
     Input(component_id='length_arrow', component_property='value'),
-    Input(component_id='size_cone_arrow', component_property='value')
+    Input(component_id='size_cone_arrow', component_property='value'),
+    Input(component_id='color_link', component_property='value')
 )
-def update_robot(params, angles, h, w_link, w_joint, w_arrow, l_arrow, c_arrow):
+def update_robot(params, angles, h, w_link, w_joint, w_arrow, l_arrow, c_arrow, l_color):
     print("update robot")
     triggered_id = ctx.triggered_id
-    # try:
-    #     if triggered_id['type'] == "dyn-in":
     dh_params = []
     for l in range(0, int(len(params)/4)):
         axis = [float(n) for n in params[4*l:4*l+4]]
@@ -167,12 +193,10 @@ def update_robot(params, angles, h, w_link, w_joint, w_arrow, l_arrow, c_arrow):
     dh_params = np.array(dh_params)
     print(dh_params)
     robot = RobotSerial(dh_params)
-    # except:
-    #     pass
     robot_angles = np.array([float(a)/180*pi for a in angles])
     f = robot.forward(robot_angles)
     
-    fig, matrices, matr_trans = draw_robot(robot, h, w_link, w_joint, w_arrow, l_arrow, c_arrow)
+    fig, matrices, matr_trans = draw_robot(robot, h, w_link, w_joint, w_arrow, l_arrow, c_arrow, l_color)
 
 
     # fig.update_layout(transition_duration=500)
@@ -183,11 +207,11 @@ def update_robot(params, angles, h, w_link, w_joint, w_arrow, l_arrow, c_arrow):
         "{:.6f}".format(pos[0]), "{:.6f}".format(pos[1]), "{:.6f}".format(pos[2]), \
         "{:.6f}".format(quat[0]), "{:.6f}".format(quat[1]), "{:.6f}".format(quat[2]), "{:.6f}".format(quat[3]), \
         [html.Thead(
-            html.Tr([html.Th("joint"), html.Th("Transition joint (i-1) to joint i"), html.Th("Transition up to joint i")])
+            html.Tr([html.Th("joint", style={"text-align": "center"}), html.Th("Transition joint (i-1) to joint i"), html.Th("Transition up to joint i")])
         ),
         html.Tbody([
             html.Tr([
-                    html.Th(i), 
+                    html.Th(i, style={"text-align": "center"}), 
                     html.Td(html.Div([
                         "{}".format(matr_trans[i-1][0]), html.Br(), 
                         "{}".format(matr_trans[i-1][1]), html.Br(),
@@ -235,7 +259,7 @@ def calc_inverse(n_c_inv, n_c_res, params, x, y, z, i, j, k, w, angles):
         robot = RobotSerial(dh_params)
 
         if triggered_id == 'inverse-btn':
-
+            print("inverse btn")
             xyz = np.array([[x], [y], [z]])
             quat = np.array([i, j, k, w])
             end = Frame.from_q_4(quat, xyz)
@@ -251,7 +275,7 @@ def calc_inverse(n_c_inv, n_c_res, params, x, y, z, i, j, k, w, angles):
             return tuple(["{:.3f}".format(a/pi*180) for a in angles])
         
         else:
-            print('\n\n\n\n\n\nWHY calc inverse ??????????\n\n\n\n\n\n')
+            print('\n\n\n\n\n\n inv btn error \n\n\n\n\n\n')
             angles = [5 for i in range(robot.num_axis)]
 
             return tuple(["{:.3f}".format(a/pi*180) for a in angles])
@@ -274,7 +298,7 @@ def reset_dh(n_c, nbr_joints, params):
         if triggered_id == 'dh-reset-btn':
             return [0 for _ in range(int(nbr_joints)*4)]
         else:
-            print('\n\n\n\n\n\nWHY reset dh ??????????\n\n\n\n\n\n')
+            print('\n\n\n\n\n\n reset dh error \n\n\n\n\n\n')
             return [12 for _ in range(int(nbr_joints)*4)]
 
 # change number of joints
@@ -287,16 +311,16 @@ def reset_dh(n_c, nbr_joints, params):
 )
 def update_output_div(joints, params, angles):
     print("update output div")
-    print("params+angles")
-    print(params)
-    print(angles)
+    # print("params+angles")
+    # print(params)
+    # print(angles)
     return [
         html.Thead(
-            html.Tr([html.Th("joint"), html.Th("d"), html.Th("a"), html.Th("alpha [°]"), html.Th("theta [°]"), html.Th("angle [°]")])
+            html.Tr([html.Th("joint", style={"text-align": "center"}), html.Th("d", style={"text-align": "center"}), html.Th("a", style={"text-align": "center"}), html.Th("alpha [°]", style={"text-align": "center"}), html.Th("theta [°]", style={"text-align": "center"}), html.Th("angle [°]", style={"text-align": "center"})])
         ),
         html.Tbody([
             html.Tr([
-                    html.Th(i), 
+                    html.Th(i, style={"text-align": "center"}), 
                     html.Td(dcc.Input(id={"name": 'd' + str(i), "type": "dyn-in"}, value=params[4*(i-1)] if 4*(i-1)+3 < len(params) else 0, type='number', style={'width': '5em'})), 
                     html.Td(dcc.Input(id={"name": 'a' + str(i), "type": "dyn-in"}, value=params[4*(i-1)+1] if 4*(i-1)+3 < len(params) else 0, type='number', style={'width': '5em'})), 
                     html.Td(dcc.Input(id={"name": 'alpha' + str(i), "type": "dyn-in"}, value=params[4*(i-1)+2] if 4*(i-1)+3 < len(params) else 0, type='number', style={'width': '5em'})), 
