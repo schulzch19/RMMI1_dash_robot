@@ -13,7 +13,7 @@ server = app.server
 
 
 # draw arrows
-def drawArrow(start, end, color, w, cone_width):
+def drawArrow(start, end, color, w, cone_width, arrow_dir):
     print("draw arrow")
     x = [start[0], end[0]]
     y = [start[1], end[1]]
@@ -25,7 +25,8 @@ def drawArrow(start, end, color, w, cone_width):
             z = [z[0], z[0]+0.95*(z[1]-z[0])],
             mode="lines",
             line = dict(color=color, width=w),
-            showlegend = False
+            showlegend = False,
+            name = arrow_dir
         ),
         go.Cone(
             x=[x[1]], y=[y[1]], z=[z[1]], 
@@ -35,16 +36,17 @@ def drawArrow(start, end, color, w, cone_width):
             showscale = False,
             showlegend = False,
             sizemode = "absolute",
-            sizeref = cone_width
+            sizeref = cone_width,
+            name = arrow_dir
         )
     ]
 
 # draw orientations
 def drawMat(mat, lw, scale, cone):
     print("draw mat")
-    arrow_x = drawArrow([mat[0, 3], mat[1, 3], mat[2, 3]], [mat[0, 3]+mat[0, 0]*scale, mat[1, 3]+mat[1, 0]*scale, mat[2, 3]+mat[2, 0]*scale], "red", lw, cone)
-    arrow_y = drawArrow([mat[0, 3], mat[1, 3], mat[2, 3]], [mat[0, 3]+mat[0, 1]*scale, mat[1, 3]+mat[1, 1]*scale, mat[2, 3]+mat[2, 1]*scale], "green", lw, cone)
-    arrow_z = drawArrow([mat[0, 3], mat[1, 3], mat[2, 3]], [mat[0, 3]+mat[0, 2]*scale, mat[1, 3]+mat[1, 2]*scale, mat[2, 3]+mat[2, 2]*scale], "blue", lw, cone)
+    arrow_x = drawArrow([mat[0, 3], mat[1, 3], mat[2, 3]], [mat[0, 3]+mat[0, 0]*scale, mat[1, 3]+mat[1, 0]*scale, mat[2, 3]+mat[2, 0]*scale], "red", lw, cone, "x")
+    arrow_y = drawArrow([mat[0, 3], mat[1, 3], mat[2, 3]], [mat[0, 3]+mat[0, 1]*scale, mat[1, 3]+mat[1, 1]*scale, mat[2, 3]+mat[2, 1]*scale], "green", lw, cone, "y")
+    arrow_z = drawArrow([mat[0, 3], mat[1, 3], mat[2, 3]], [mat[0, 3]+mat[0, 2]*scale, mat[1, 3]+mat[1, 2]*scale, mat[2, 3]+mat[2, 2]*scale], "blue", lw, cone, "z")
     xy = arrow_x + arrow_y
     return xy + arrow_z
 
@@ -68,7 +70,7 @@ def draw_robot(robot, height, w_link, w_joint, w_arrow, l_arrow, c_arrow, l_colo
         transitional_matrices.append(np.array(robot.ts[i][:4, :4]))
 
     layout = go.Layout(scene=dict(aspectmode="data"), height = max(10, int(height)), margin=dict(l=0, r=0, b=0, t=0))
-    data=[go.Scatter3d(x=poses[:, 0], y=poses[:, 1], z=poses[:, 2],mode='lines+markers', line=dict(color=l_color, width=int(w_link)), marker=dict(color='black', size=int(w_joint)), showlegend = False)]
+    data=[go.Scatter3d(x=poses[:, 0], y=poses[:, 1], z=poses[:, 2],mode='lines+markers', line=dict(color=l_color, width=int(w_link)), marker=dict(color='black', size=int(w_joint)), showlegend = False, name="robot joint")]
     for mat in matrices:
         data = data + drawMat(mat, int(w_arrow), float(l_arrow), float(c_arrow))
     fig = go.Figure(data=data, layout=layout)
@@ -126,7 +128,63 @@ app.layout = html.Div([
     ]),
     html.H2("DH parameters"),
     html.Div(["number of joints: ", dcc.Input(id='nbr_joints', value='6', type='number', style={'width': '5em'})], style={"fontWeight": "bold"}), 
-    html.Table([], id='joints_table'),
+    html.Table([
+
+        html.Thead(
+            html.Tr([html.Th("joint", style={"text-align": "center"}), html.Th("d", style={"text-align": "center"}), html.Th("a", style={"text-align": "center"}), html.Th("alpha [°]", style={"text-align": "center"}), html.Th("theta [°]", style={"text-align": "center"}), html.Th("angle [°]", style={"text-align": "center"})])
+        ),
+        html.Tbody([
+            html.Tr([
+                    html.Th(1, style={"text-align": "center"}), 
+                    html.Td(dcc.Input(id={"name": 'd1', "type": "dyn-in"}, value=0.78, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'a1', "type": "dyn-in"}, value=0.41, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'alpha1', "type": "dyn-in"}, value=-90, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'theta1', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'angle1', "type": "dyn-in-angle"}, value=0, type='number', style={'width': '5em'}))
+                    ]),
+            html.Tr([
+                    html.Th(2, style={"text-align": "center"}), 
+                    html.Td(dcc.Input(id={"name": 'd2', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'a2', "type": "dyn-in"}, value=1.075, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'alpha2', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'theta2', "type": "dyn-in"}, value=-90, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'angle2', "type": "dyn-in-angle"}, value=0, type='number', style={'width': '5em'}))
+                    ]),
+            html.Tr([
+                    html.Th(3, style={"text-align": "center"}), 
+                    html.Td(dcc.Input(id={"name": 'd3', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'a3', "type": "dyn-in"}, value=0.165, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'alpha3', "type": "dyn-in"}, value=-90, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'theta3', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'angle3', "type": "dyn-in-angle"}, value=0, type='number', style={'width': '5em'}))
+                    ]),
+            html.Tr([
+                    html.Th(4, style={"text-align": "center"}), 
+                    html.Td(dcc.Input(id={"name": 'd4', "type": "dyn-in"}, value=1.056, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'a4', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'alpha4', "type": "dyn-in"}, value=90, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'theta4', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'angle4', "type": "dyn-in-angle"}, value=0, type='number', style={'width': '5em'}))
+                    ]),
+            html.Tr([
+                    html.Th(5, style={"text-align": "center"}), 
+                    html.Td(dcc.Input(id={"name": 'd5', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'a5', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'alpha5', "type": "dyn-in"}, value=-90, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'theta5', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'angle5', "type": "dyn-in-angle"}, value=0, type='number', style={'width': '5em'}))
+                    ]),
+            html.Tr([
+                    html.Th(6, style={"text-align": "center"}), 
+                    html.Td(dcc.Input(id={"name": 'd6', "type": "dyn-in"}, value=0.25, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'a6', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'alpha6', "type": "dyn-in"}, value=0, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'theta6', "type": "dyn-in"}, value=180, type='number', style={'width': '5em'})), 
+                    html.Td(dcc.Input(id={"name": 'angle6', "type": "dyn-in-angle"}, value=0, type='number', style={'width': '5em'}))
+                    ])        
+        ]),
+
+    ], id='joints_table'),
     html.Br(),
     html.Div([
         "TCP: ",
@@ -204,26 +262,26 @@ def update_robot(params, angles, h, w_link, w_joint, w_arrow, l_arrow, c_arrow, 
     quat = f.q_4
 
     return fig, \
-        "{:.6f}".format(pos[0]), "{:.6f}".format(pos[1]), "{:.6f}".format(pos[2]), \
-        "{:.6f}".format(quat[0]), "{:.6f}".format(quat[1]), "{:.6f}".format(quat[2]), "{:.6f}".format(quat[3]), \
+        "{:.4f}".format(pos[0]), "{:.4f}".format(pos[1]), "{:.4f}".format(pos[2]), \
+        "{:.4f}".format(quat[0]), "{:.4f}".format(quat[1]), "{:.4f}".format(quat[2]), "{:.4f}".format(quat[3]), \
         [html.Thead(
-            html.Tr([html.Th("joint", style={"text-align": "center"}), html.Th("Transition joint (i-1) to joint i"), html.Th("Transition up to joint i")])
+            html.Tr([html.Th("joint", style={"text-align": "center"}), html.Th("Transition joint (i-1) to joint i", style={"text-align": "center"}), html.Th("Transition up to joint i", style={"text-align": "center"})])
         ),
         html.Tbody([
             html.Tr([
                     html.Th(i, style={"text-align": "center"}), 
                     html.Td(html.Div([
-                        "{}".format(matr_trans[i-1][0]), html.Br(), 
-                        "{}".format(matr_trans[i-1][1]), html.Br(),
-                        "{}".format(matr_trans[i-1][2]), html.Br(),
-                        "{}".format(matr_trans[i-1][3])
-                        ])),
+                        "{1:>{0}.3f}|{2:>{0}.3f}|{3:>{0}.3f}|{4:>{0}.3f}".format(8, round(matr_trans[i-1][0][0], 3), round(matr_trans[i-1][0][1], 3), round(matr_trans[i-1][0][2], 3), round(matr_trans[i-1][0][3], 3)), html.Br(), 
+                        "{1:>{0}.3f}|{2:>{0}.3f}|{3:>{0}.3f}|{4:>{0}.3f}".format(8, round(matr_trans[i-1][1][0], 3), round(matr_trans[i-1][1][1], 3), round(matr_trans[i-1][1][2], 3), round(matr_trans[i-1][1][3], 3)), html.Br(),
+                        "{1:>{0}.3f}|{2:>{0}.3f}|{3:>{0}.3f}|{4:>{0}.3f}".format(8, round(matr_trans[i-1][2][0], 3), round(matr_trans[i-1][2][1], 3), round(matr_trans[i-1][2][2], 3), round(matr_trans[i-1][2][3], 3)), html.Br(),
+                        "{1:>{0}.3f}|{2:>{0}.3f}|{3:>{0}.3f}|{4:>{0}.3f}".format(8, round(matr_trans[i-1][3][0], 3), round(matr_trans[i-1][3][1], 3), round(matr_trans[i-1][3][2], 3), round(matr_trans[i-1][3][3], 3))
+                        ], style={"white-space": "pre", "font-family": "monospace"})),
                     html.Td(html.Div([
-                        "{}".format(matrices[i][0]), html.Br(), 
-                        "{}".format(matrices[i][1]), html.Br(),
-                        "{}".format(matrices[i][2]), html.Br(),
-                        "{}".format(matrices[i][3])
-                        ]))
+                        "{1:>{0}.3f}|{2:>{0}.3f}|{3:>{0}.3f}|{4:>{0}.3f}".format(8, round(matrices[i][0][0], 3), round(matrices[i][0][1], 3), round(matrices[i][0][2], 3), round(matrices[i][0][3], 3)), html.Br(), 
+                        "{1:>{0}.3f}|{2:>{0}.3f}|{3:>{0}.3f}|{4:>{0}.3f}".format(8, round(matrices[i][1][0], 3), round(matrices[i][1][1], 3), round(matrices[i][1][2], 3), round(matrices[i][1][3], 3)), html.Br(),
+                        "{1:>{0}.3f}|{2:>{0}.3f}|{3:>{0}.3f}|{4:>{0}.3f}".format(8, round(matrices[i][2][0], 3), round(matrices[i][2][1], 3), round(matrices[i][2][2], 3), round(matrices[i][2][3], 3)), html.Br(),
+                        "{1:>{0}.3f}|{2:>{0}.3f}|{3:>{0}.3f}|{4:>{0}.3f}".format(8, round(matrices[i][3][0], 3), round(matrices[i][3][1], 3), round(matrices[i][3][2], 3), round(matrices[i][3][3], 3))
+                        ], style={"white-space": "pre", "font-family": "monospace"})),
                     ]) for i in range(1,len(matrices))]
         )]
 
@@ -266,19 +324,19 @@ def calc_inverse(n_c_inv, n_c_res, params, x, y, z, i, j, k, w, angles):
             robot.inverse(end)
             angles = robot.axis_values
 
-            return tuple(["{:.3f}".format(a/pi*180) for a in angles])
+            return tuple(["{:.2f}".format(a/pi*180) for a in angles])
         elif triggered_id == 'angle-reset-btn':
             print("reset angles")
 
             angles = [0 for i in range(robot.num_axis)]
 
-            return tuple(["{:.3f}".format(a/pi*180) for a in angles])
+            return tuple(["{:.2f}".format(a/pi*180) for a in angles])
         
         else:
             print('\n\n\n\n\n\n inv btn error \n\n\n\n\n\n')
             angles = [5 for i in range(robot.num_axis)]
 
-            return tuple(["{:.3f}".format(a/pi*180) for a in angles])
+            return tuple(["{:.2f}".format(a/pi*180) for a in angles])
 
 # reset dh parameters
 @app.callback(
